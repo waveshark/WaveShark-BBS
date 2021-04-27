@@ -3,11 +3,14 @@ from datetime import datetime, timedelta
 
 ser = serial.Serial("/dev/ttyUSB0", 115200, timeout = 0.01)
 
-announceSeconds = 60
+announceSeconds = 600
 nextAnnounce = datetime.now()
 
 lastHeard = {}
 wall = []
+
+def writeToSerial(s):
+  ser.write(bytes(s, "ascii"))
 
 while True:
   l = ser.readline()
@@ -28,42 +31,52 @@ while True:
       if "WSBBS-HEARD".lower() in s.lower():
         print("Got WSBBS-HEARD command")
         for sender in lastHeard:
-          ser.write(b"I last heard ")
-          ser.write(bytes(sender, "ascii"))
-          ser.write(b" at ")
-          ser.write(bytes(lastHeard[sender], "ascii"))
-          ser.write(b"\r\n")
+          writeToSerial("I last heard ")
+          writeToSerial(sender)
+          writeToSerial(" at ")
+          writeToSerial(lastHeard[sender])
+          writeToSerial("\r\n")
 
       # WSBBS-WRITE command?
-      if "WSBBS-WRITE".lower() in s.lower():
+      elif "WSBBS-WRITE".lower() in s.lower():
         print("Got WSBBS-WRITE command")
         tokens = message.strip().split(" ")
         del tokens[0]
         post = (" ".join(tokens)).strip()
         print ("Post [" + post + "]")
         if post != "":
-          wall.append("<" + sender + "> " + post)
-          ser.write(bytes(sender, "ascii"))
-          ser.write(b", I added your message to the wall.\r\n")
+          wall.append("[" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "] <" + sender + "> " + post)
+          writeToSerial(sender)
+          writeToSerial(", I added your message to the wall.\r\n")
 
           print("Wall contents now:")
           for message in wall:
             print(message)
         else: 
-          ser.write(bytes(sender, "ascii"))
-          ser.write(b", what is your message?\r\n")
+          writeToSerial(sender)
+          writeToSerial(", what is your message?\r\n")
 
       # WSBBS-READ command?
+      elif "WSBBS-READ".lower() in s.lower():
+        print("Got WSBBS-READ command")
+        if len(wall) > 0:
+          for message in wall:
+            writeToSerial(message)
+            writeToSerial("\r\n")
+        else:
+          writeToSerial(sender)
+          writeToSerial(", there are no messages on the wall.\r\n")
 
       # WSBBS-HELP command?
       elif "WSBBS-HELP".lower() in s.lower():
-        ser.write(b"Say WSBBS-READ to read messages on the wall.  Say WSBBS-WRITE to write a message on the wall.  Say WSBBS-HEARD to get a list of recently heard users.\r\n")
+        print("Got WSBBS-HELP command")
+        writeToSerial("Say WSBBS-READ to read messages on the wall. Say WSBBS-WRITE to write a message on the wall. Say WSBBS-HEARD to get a list of recently heard users.\r\n")
 
   # Time to send announcement?
   secondsUntilAnnounce = (nextAnnounce - datetime.now()).total_seconds()
   if secondsUntilAnnounce <= 0:
     nextAnnounce = datetime.now() + timedelta(seconds = announceSeconds)
     print("Sending announcement")
-    # ser.write(b"Hello from WaveShark BBS!  Say WSBBS-HELP to get a list of available commands.\r\n")
+    writeToSerial("Hello from WaveShark BBS! Say WSBBS-HELP to get a list of available commands.\r\n")
 
 ser.close()
