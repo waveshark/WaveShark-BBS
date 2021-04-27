@@ -52,7 +52,7 @@ while True:
           print("Wall contents now:")
           for message in wall:
             print(message)
-        else: 
+        else:
           writeToSerial(sender)
           writeToSerial(", what is your message?\r\n")
 
