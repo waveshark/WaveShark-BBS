@@ -1,4 +1,3 @@
-# TODO: HANDLE UNKNOWN COMMANDS
 # TODO: READ/WRITE WALL AND LAST HEARD FROM/TO DISK
 
 import sys
@@ -123,7 +122,10 @@ while True:
       print("Got HELP command")
       writeToSerial(ser, "Say {} READ to read messages on the wall. Say {} WRITE to write a message on the wall. Say {} HEARD to get a list of recently heard users.".format(bbs_name, bbs_name, bbs_name))
 
-    # TODO: Unknown command?
+    # Unknown command?
+    elif "{} ".format(bbs_name).lower() in s.lower():
+      print("Got UNKNOWN command")
+      writeToSerial(ser, "{}, I don't understand what you mean. Say {} HELP to get a list of available commands.".format(message_from, bbs_name))
 
   # Time to send announcement?
   secondsUntilAnnounce = (nextAnnounce - datetime.now()).total_seconds()
