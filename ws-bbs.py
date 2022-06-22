@@ -10,7 +10,7 @@ import serial.tools.list_ports
 
 # Settings
 announceSeconds = 600
-max_wall_messages = 3
+max_wall_messages = 25
 
 def readLineFromSerial(ser):
   return ser.readline().decode("ascii").strip()
