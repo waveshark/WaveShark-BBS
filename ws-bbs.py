@@ -8,6 +8,10 @@ import re
 import serial
 import serial.tools.list_ports
 
+# Settings
+announceSeconds = 600
+max_wall_messages = 3
+
 def readLineFromSerial(ser):
   return ser.readline().decode("ascii").strip()
 
@@ -48,11 +52,9 @@ print("BBS name: [{}]".format(bbs_name))
 writeToSerial(ser, "/SEROUT FIELDTEST", 3)
 
 # For sending periodic BBS announcements
-announceSeconds = 600
 nextAnnounce = datetime.now()
 
 # Wall and last heard
-max_wall_messages = 3
 wall = []
 lastHeard = {}
 
