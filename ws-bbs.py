@@ -1,5 +1,3 @@
-# TODO: READ/WRITE WALL AND LAST HEARD FROM/TO DISK
-
 import sys
 from datetime import datetime, timedelta
 import time
