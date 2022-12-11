@@ -6,5 +6,5 @@ Partially meant to inspire other WaveShark users to write their own software to 
 
 ## Usage
 
-* python ws-bbs.py
+* python -m pip install -r requirements.txt
 * python3 ws-bbs.py
