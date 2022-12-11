@@ -4,22 +4,19 @@ import sys
 from datetime import datetime, timedelta
 import time
 import re
+import json
 import serial
 import serial.tools.list_ports
-
-# TODO: Detect WaveShark Communicators and connect to first one found
-
-# TODO: /SEROUT FIELDTEST, get /NAME, etc
-
-# TODO: Write wall contents to disk
-
-# TODO: Function for reading from serial that handles conversion to ASCII, etc
-
-ser = serial.Serial("/dev/ttyUSB0", 115200, timeout = 0.01)
 
 # Settings
 announceSeconds = 600
 max_wall_messages = 25
+use_wall_messages_file = True
+use_last_heard_file = True
+
+# Disk persistence
+wall_messages_filename = "messages.json"
+last_heard_filename = "heard.json"
 
 def readLineFromSerial(ser):
   return ser.readline().decode("ascii").strip()
@@ -31,23 +28,51 @@ def writeToSerial(ser, str, numLinesToEat = 1):
 
 def try_connect():
   for port, desc, hwid in sorted(serial.tools.list_ports.comports()):
-    if "CP2102" in desc:
+    if "CP210" in desc:
       try:
-        ser = serial.Serial("/dev/ttyUSB0", 115200, timeout = 0.1)
+        ser = serial.Serial(baudrate = 115200, timeout = 1.0)
+        ser.rts = False
+        ser.dtr = False
+        ser.port = port
+        ser.open()
         writeToSerial(ser, "/VERSION")
         if "WaveShark firmware" in readLineFromSerial(ser):
-          return ser
+          return ser, port
       except:
-        type, value, traceback = sys.exc_info()
-        print(value)
+        # type, value, traceback = sys.exc_info()
+        # print(value)
         pass
 
-  return False
+  return False, False
+
+def try_get_wall_messages_from_file():
+  try:
+    with open(wall_messages_filename, "r") as f:
+      return json.loads(f.readlines()[0])["messages"]
+  except:
+    print("Could not load wall messages from file, starting from blank wall messages file")
+    return []
+
+def try_get_last_heard_from_file():
+  try:
+    with open(last_heard_filename, "r") as f:
+      return json.loads(f.readlines()[0])
+  except:
+    print("Could not load last heard from file, starting from blank last heard file")
+    return {}
+
+def save_wall_messages_to_file(wall_messages):
+  with open(wall_messages_filename, "w") as f:
+    f.write(json.dumps({"messages": wall_messages}))
+
+def save_last_heard_to_file(last_heard):
+  with open(last_heard_filename, "w") as f:
+    f.write(json.dumps(last_heard))
 
 # Connect to WaveShark Communicator
-ser = try_connect()
+ser, port = try_connect()
 if ser != False:
-  print("Connected to WaveShark Communicator device")
+  print("Connected to WaveShark Communicator device on [{}]".format(port))
 else:
   print("Failed to connect to WaveShark Communicator device")
   exit()
@@ -64,8 +89,8 @@ writeToSerial(ser, "/SEROUT FIELDTEST", 3)
 nextAnnounce = datetime.now()
 
 # Wall and last heard
-wall = []
-lastHeard = {}
+wall = try_get_wall_messages_from_file() if use_wall_messages_file else []
+lastHeard = try_get_last_heard_from_file() if use_last_heard_file else {}
 
 # Process incoming messages
 while True:
@@ -81,6 +106,8 @@ while True:
     # Update last heard
     print("Got message [{}] from [{}]".format(message_body, message_from))
     lastHeard[message_from] = datetime.now().strftime("%Y-%m-%d %H:%M")
+    if use_last_heard_file:
+      save_last_heard_to_file(lastHeard)
     print("Updated last heard for [{}] to {}".format(message_from, lastHeard[message_from]))
 
     # HEARD command?
@@ -100,12 +127,16 @@ while True:
       print ("Received wall message [" + post + "]")
       if post != "":
         wall.append("[" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "] <" + message_from + "> " + post)
+        if use_wall_messages_file:
+          save_wall_messages_to_file(wall)
         writeToSerial(ser, "{}, I have added your message to the wall.".format(message_from))
 
         # Maintain maximum wall length
         if len(wall) > max_wall_messages:
           print("Removing a message from the wall")
           del wall[0]
+          if use_wall_messages_file:
+            save_wall_messages_to_file(wall)
 
         print("Wall contents now:")
         for message in wall:
