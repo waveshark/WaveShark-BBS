@@ -7,6 +7,16 @@ import re
 import serial
 import serial.tools.list_ports
 
+# TODO: Detect WaveShark Communicators and connect to first one found
+
+# TODO: /SEROUT FIELDTEST, get /NAME, etc
+
+# TODO: Write wall contents to disk
+
+# TODO: Function for reading from serial that handles conversion to ASCII, etc
+
+ser = serial.Serial("/dev/ttyUSB0", 115200, timeout = 0.01)
+
 # Settings
 announceSeconds = 600
 max_wall_messages = 25
